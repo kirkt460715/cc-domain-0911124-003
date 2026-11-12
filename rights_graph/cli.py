@@ -4,7 +4,8 @@ import pathlib
 import sys
 from rights_graph.primitives import GraphError, canonical, fields, json_loads, reject
 from rights_graph.service import RightsService
-from rights_graph.catalog import importing, linting
+from rights_graph.catalog import importing, linting, assets
+from rights_graph.policy import grants
 from rights_graph.planner import plans, builds, artifacts, inspection, recovery
 
 
@@ -79,6 +80,8 @@ def parser():
     sub.add_parser('recovery-queue')
     demo = sub.add_parser('demo')
     demo.add_argument('--fixture', required=True)
+    drift = sub.add_parser('drift-demo', help='Synthetic drift drill: identical marginals, changed correlation')
+    drift.add_argument('--fixture', required=True)
     return root
 
 
@@ -144,6 +147,79 @@ def demonstrate(service, fixture):
     return {'synthetic': True, 'target': fixture['target'], 'rows': preview['payload']['rows'], 'row_lineage': preview['payload']['row_lineage'], 'manifest_sha256': exported['authorization']['sha256'], 'uncommitted_artifacts': len(visible_before), 'revocation_blocked_export': not invalidated['valid'], 'integrity': check['ok']}
 
 
+def demonstrate_drift(service, fixture):
+    """Synthetic drill for the 'same means, different relationships' failure.
+
+    Both batches share the same x and y marginal distributions (standard
+    normal) and the same segment frequencies; only the joint x-y correlation
+    changes from independent to strongly coupled.  A marginal-only review
+    sees nothing while the standardized energy distance flags the joint
+    drift that explains the downstream rule hit-rate drop.
+    """
+    import random
+    fields(fixture, {'asset', 'grant', 'context', 'subjects', 'reference_correlation',
+                     'candidate_correlation', 'permutations', 'analysis_id'})
+    asset_spec = fixture['asset']
+    assets.create(service.store, asset_spec['asset_id'], asset_spec['kind'], asset_spec['owner'],
+                  asset_spec['columns'], asset_spec['description'])
+    grants.create(service.store, fixture['grant']['grant_id'], fixture['grant']['asset_id'],
+                  fixture['grant']['policy'])
+
+    def rows(correlation, seed):
+        rng = random.Random(seed)
+        produced = []
+        for index in range(fixture['subjects']):
+            first = rng.gauss(0, 1)
+            second = rng.gauss(0, 1)
+            x = first
+            y = correlation * first + (1 - correlation * correlation) ** 0.5 * second
+            produced.append({
+                'subject': f'subject-{index:04d}',
+                'x': str(round(x, 4)),
+                'y': str(round(y, 4)),
+                'segment': None if index % 19 == 0 else ('core' if index % 2 else 'edge'),
+            })
+        return produced
+
+    reference = service.preview.data.import_rows(
+        'drift-reference', asset_spec['asset_id'], 1,
+        rows(fixture['reference_correlation'], 20260101))
+    assets.revise(service.store, asset_spec['asset_id'], 1,
+                  asset_spec['columns'], asset_spec['description'] + ' (partner refresh)')
+    candidate = service.preview.data.import_rows(
+        'drift-candidate', asset_spec['asset_id'], 2,
+        rows(fixture['candidate_correlation'], 20261111))
+    analysis = service.drift.analyze(fixture['analysis_id'], {
+        'reference_batch': reference['batch_id'],
+        'candidate_batch': candidate['batch_id'],
+        'subject_key': 'subject',
+        'context': fixture['context'],
+        'permutations': fixture['permutations'],
+    })
+    payload = analysis['payload']
+    marginals = []
+    for report in payload['fields']:
+        if report['family'] == 'numeric':
+            marginals.append({'column': report['column'],
+                              'wasserstein_1': report['wasserstein_1'],
+                              'significant_bh': report['significant_bh']})
+        else:
+            marginals.append({'column': report['column'],
+                              'jensen_shannon_normalized': report['jensen_shannon']['normalized'],
+                              'significant_bh': report['significant_bh']})
+    return {
+        'synthetic': True,
+        'analysis_id': analysis['analysis_id'],
+        'headline': payload['diagnosis']['headline'],
+        'marginal_tests': marginals,
+        'joint': {key: payload['joint'][key] for key in
+                  ('performed', 'fields_used', 'energy_distance', 'p_value', 'sample_size')},
+        'boundaries': payload['boundaries'],
+        'interpretation': 'Marginals stay near-identical; the joint energy distance detects the correlation change',
+        'export_sha256': service.drift.export(analysis['analysis_id'])['sha256'],
+    }
+
+
 def run(args, service):
     command = args.command
     if command == 'call':
@@ -181,6 +257,8 @@ def run(args, service):
         return recovery.queue(service.store)
     if command == 'demo':
         return demonstrate(service, read_json(args.fixture))
+    if command == 'drift-demo':
+        return demonstrate_drift(service, read_json(args.fixture))
     reject('unknown_command', 'Unsupported command')
 
 

@@ -8,6 +8,7 @@ from rights_graph.planner import plans, builds, artifacts, inspection, invalidat
 from rights_graph.planner.preview import PreviewEngine
 from rights_graph.planner.campaigns import Campaigns
 from rights_graph.planner.delivery import DeliveryDesk
+from rights_graph.diagnostics.drift import DriftDesk
 
 
 class RightsService:
@@ -17,6 +18,7 @@ class RightsService:
         self.proposals = ProposalDesk(self.store)
         self.campaigns = Campaigns(self.store)
         self.deliveries = DeliveryDesk(self.store)
+        self.drift = DriftDesk(self.store)
 
     def __enter__(self):
         return self
@@ -244,6 +246,18 @@ class RightsService:
         if operation == 'delivery.acknowledge_alert':
             fields(data, {'alert_id', 'recipient'})
             return self.deliveries.acknowledge_alert(**data)
+        if operation == 'drift.analyze':
+            fields(data, {'analysis_id', 'request'})
+            return self.drift.analyze(**data)
+        if operation == 'drift.get':
+            fields(data, {'analysis_id'})
+            return self.drift.get(**data)
+        if operation == 'drift.export':
+            fields(data, {'analysis_id'})
+            return self.drift.export(**data)
+        if operation == 'drift.list':
+            fields(data, set())
+            return self.drift.listing()
         if operation == 'audit.page':
             fields(data, set(), {'after', 'limit'})
             return audit.page(self.store, **data)

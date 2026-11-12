@@ -1,0 +1,41 @@
+{
+  "asset": {
+    "asset_id": "drift-source",
+    "kind": "source",
+    "owner": "synthetic-owner",
+    "columns": [
+      {"name": "subject", "type": "string", "classification": "internal", "nullable": false},
+      {"name": "x", "type": "decimal", "classification": "internal", "nullable": false},
+      {"name": "y", "type": "decimal", "classification": "internal", "nullable": false},
+      {"name": "segment", "type": "string", "classification": "internal", "nullable": true}
+    ],
+    "description": "Synthetic two-version source for distribution drift drill"
+  },
+  "grant": {
+    "grant_id": "grant-drift-source",
+    "asset_id": "drift-source",
+    "policy": {
+      "purposes": ["research"],
+      "regions": ["cn"],
+      "rights": ["read", "transform"],
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2027-01-01T00:00:00Z",
+      "obligations": [],
+      "columns": ["subject", "x", "y", "segment"],
+      "max_depth": 10,
+      "allow_derivatives": true
+    }
+  },
+  "context": {
+    "purpose": "research",
+    "region": "cn",
+    "right": "read",
+    "at": "2026-11-11T00:00:00Z",
+    "fulfilled_obligations": []
+  },
+  "subjects": 200,
+  "reference_correlation": 0.0,
+  "candidate_correlation": 0.9,
+  "permutations": 80,
+  "analysis_id": "drift-drill"
+}
