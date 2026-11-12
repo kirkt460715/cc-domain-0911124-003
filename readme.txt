@@ -1,0 +1,23 @@
+# 授权数据图
+
+管理源资产、派生配方、列级血缘和用途地域授权，按授权上下文预览、构建并交付数据产品。撤权会影响计划和成品有效性。
+
+演练使用本地目录与数据批次完成授权规划、构建和校验。预览连接按等长位置对齐；本地证明不是外部签名。
+
+主要代码位于 rights_graph，按 catalog、policy、planner、journal 划分职责；tests 保存领域行为、边界及存储回归用例。命令接收严格 JSON，详细操作名与字段可通过对应帮助入口及 service 中的注册表查询。示例中的机构、客户、案件和测量均为本地合成记录，不涉及真实个人资料。
+
+使用 Python 3.11.2 与标准库，无第三方包。运行无需访问外部服务或提供账号。依赖清单 requirements.txt 为空，.python-version 固定解释器版本。
+
+在项目根目录运行：
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 -m compileall -q rights_graph
+python3 -m rights_graph --db :memory: demo --fixture fixtures/demo.json
+```
+
+也可执行下面的统一检查，按顺序进行语法编译、领域回归和完整本地演练，任一环节失败即退出。运行写入均在临时目录或内存数据库，重复执行不需清理已有业务账。正常数据规模的检查可在 90 秒内完成。
+
+```sh
+sh scripts/check.sh
+```

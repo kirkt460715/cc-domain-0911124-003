@@ -1,0 +1,123 @@
+{
+  "catalog": {
+    "format": "rights-catalog",
+    "version": 1,
+    "assets": [
+      {
+        "asset_id": "source",
+        "kind": "source",
+        "owner": "synthetic-owner",
+        "columns": [
+          {
+            "name": "text",
+            "type": "string",
+            "classification": "internal",
+            "nullable": false
+          }
+        ],
+        "description": "Synthetic creator interaction text"
+      },
+      {
+        "asset_id": "derived",
+        "kind": "derived",
+        "owner": "synthetic-owner",
+        "columns": [
+          {
+            "name": "text",
+            "type": "string",
+            "classification": "internal",
+            "nullable": false
+          }
+        ],
+        "description": "Hashed local text feature"
+      }
+    ],
+    "grants": [
+      {
+        "grant_id": "grant-source",
+        "asset_id": "source",
+        "policy": {
+          "purposes": [
+            "research",
+            "search"
+          ],
+          "regions": [
+            "cn",
+            "eu"
+          ],
+          "rights": [
+            "read",
+            "transform",
+            "distribute"
+          ],
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_until": "2027-01-01T00:00:00Z",
+          "obligations": [
+            "attribution"
+          ],
+          "columns": [
+            "text"
+          ],
+          "max_depth": 10,
+          "allow_derivatives": true
+        }
+      }
+    ],
+    "recipes": [
+      {
+        "recipe_id": "recipe-derived",
+        "output_asset": "derived",
+        "definition": {
+          "inputs": [
+            {
+              "asset_id": "source",
+              "alias": "input"
+            }
+          ],
+          "columns": [
+            {
+              "output": "text",
+              "operator": "hash",
+              "sources": [
+                {
+                  "input": "input",
+                  "column": "text"
+                }
+              ]
+            }
+          ],
+          "description": "Synthetic derivation"
+        }
+      }
+    ]
+  },
+  "context": {
+    "purpose": "research",
+    "region": "cn",
+    "right": "read",
+    "at": "2026-11-11T00:00:00Z",
+    "fulfilled_obligations": [
+      "attribution"
+    ]
+  },
+  "target": "derived",
+  "batches": [
+    {
+      "batch_id": "batch",
+      "asset_id": "source",
+      "version": 1,
+      "rows": [
+        {
+          "text": "synthetic conversation A"
+        },
+        {
+          "text": "synthetic conversation B"
+        }
+      ]
+    }
+  ],
+  "bindings": {
+    "source": "batch"
+  },
+  "revoke_grant": "grant-source"
+}
